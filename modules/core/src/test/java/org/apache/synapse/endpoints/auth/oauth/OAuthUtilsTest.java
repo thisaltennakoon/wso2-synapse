@@ -326,7 +326,7 @@ public class OAuthUtilsTest {
         public void testRetryOnOAuthFailure() {
 
             assertEquals(expected,
-                    OAuthUtils.retryOnOAuthFailure(httpEndpoint, messageContextIn, messageContextOut));
+                    OAuthUtils.retryOnOAuthFailure(messageContextIn, messageContextOut));
 
         }
     }

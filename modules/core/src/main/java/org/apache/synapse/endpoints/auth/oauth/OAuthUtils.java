@@ -30,7 +30,6 @@ import org.apache.synapse.SynapseConstants;
 import org.apache.synapse.commons.resolvers.ResolverFactory;
 import org.apache.synapse.config.xml.XMLConfigConstants;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
-import org.apache.synapse.endpoints.OAuthConfiguredHTTPEndpoint;
 import org.apache.synapse.endpoints.auth.AuthConstants;
 import org.apache.synapse.endpoints.auth.AuthException;
 import org.apache.synapse.mediators.Value;
@@ -387,13 +386,11 @@ public class OAuthUtils {
     /**
      * Method to check whether retry is needed.
      *
-     * @param httpEndpoint     OAuth Configured HTTP Endpoint related to the message context
      * @param synapseInMsgCtx  MessageContext that has been received
      * @param synapseOutMsgCtx Corresponding outgoing Synapse MessageContext for the above received MessageContext
      * @return true if the call needs to be retried
      */
-    public static boolean retryOnOAuthFailure(OAuthConfiguredHTTPEndpoint httpEndpoint, MessageContext synapseInMsgCtx,
-                                              MessageContext synapseOutMsgCtx) {
+    public static boolean retryOnOAuthFailure(MessageContext synapseInMsgCtx, MessageContext synapseOutMsgCtx) {
 
         Boolean hasRetried = (Boolean) synapseOutMsgCtx.getProperty(AuthConstants.RETRIED_ON_OAUTH_FAILURE);
         if (hasRetried != null && hasRetried) {

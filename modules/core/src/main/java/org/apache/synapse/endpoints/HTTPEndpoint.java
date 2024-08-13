@@ -20,14 +20,20 @@ package org.apache.synapse.endpoints;
 
 import com.damnhandy.uri.template.UriTemplate;
 import com.damnhandy.uri.template.VariableExpansionException;
+import org.apache.axis2.AxisFault;
 import org.apache.axis2.Constants;
 import org.apache.axis2.addressing.EndpointReference;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.SynapseConstants;
+import org.apache.synapse.endpoints.auth.AuthConstants;
+import org.apache.synapse.endpoints.auth.AuthException;
+import org.apache.synapse.endpoints.auth.oauth.MessageCache;
+import org.apache.synapse.endpoints.auth.oauth.OAuthUtils;
 import org.apache.synapse.mediators.MediatorProperty;
 import org.apache.synapse.mediators.base.SequenceMediator;
 import org.apache.synapse.rest.RESTConstants;
 import org.apache.synapse.transport.netty.BridgeConstants;
+import org.apache.synapse.util.MessageHelper;
 import org.apache.synapse.util.xpath.SynapseXPath;
 import org.json.JSONObject;
 
@@ -98,6 +104,22 @@ public class HTTPEndpoint extends AbstractEndpoint {
     }
 
     public void send(MessageContext synCtx) {
+
+        try {
+            // If this a blocking call, add 401 as a non error http status code
+            if (synCtx.getProperty(SynapseConstants.BLOCKING_MSG_SENDER) != null) {
+                OAuthUtils.append401HTTPSC(synCtx);
+            }
+
+            // Clone the original MessageContext and save it to do a retry after a token refresh
+            MessageContext cloneMessageContext = MessageHelper.cloneMessageContext(synCtx);
+            MessageCache.getInstance().addMessageContext(synCtx.getMessageID(), cloneMessageContext);
+
+        } catch (AxisFault axisFault) {
+            String errorMsg = "Error cloning the message context for oauth configured http endpoint " + this.getName();
+            log.error(errorMsg);
+        }
+
         // For setting Car name (still for Proxy)
         logSetter();
 
@@ -109,6 +131,13 @@ public class HTTPEndpoint extends AbstractEndpoint {
         } else {
             super.send(synCtx);
         }
+    }
+
+    public MessageContext retryCallWithNewToken(MessageContext synCtx) {
+        // set RETRIED_ON_OAUTH_FAILURE property to true
+        synCtx.setProperty(AuthConstants.RETRIED_ON_OAUTH_FAILURE, true);
+        send(synCtx);
+        return synCtx;
     }
 
     public void executeEpTypeSpecificFunctions(MessageContext synCtx) {

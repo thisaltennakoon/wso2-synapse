@@ -50,7 +50,9 @@ import org.apache.synapse.config.SynapseConfiguration;
 import org.apache.synapse.endpoints.AbstractEndpoint;
 import org.apache.synapse.endpoints.Endpoint;
 import org.apache.synapse.endpoints.FailoverEndpoint;
+import org.apache.synapse.endpoints.HTTPEndpoint;
 import org.apache.synapse.endpoints.OAuthConfiguredHTTPEndpoint;
+import org.apache.synapse.endpoints.auth.AuthConstants;
 import org.apache.synapse.endpoints.dispatch.Dispatcher;
 import org.apache.synapse.endpoints.auth.oauth.MessageCache;
 import org.apache.synapse.endpoints.auth.oauth.OAuthUtils;
@@ -67,6 +69,7 @@ import org.apache.synapse.util.MessageHelper;
 import org.apache.synapse.util.ResponseAcceptEncodingProcessor;
 
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Stack;
 import java.util.Timer;
 
@@ -605,8 +608,7 @@ public class SynapseCallbackReceiver extends CallbackReceiver {
 
                 OAuthConfiguredHTTPEndpoint httpEndpoint = (OAuthConfiguredHTTPEndpoint) successfulEndpoint;
 
-                if (originalMC != null && OAuthUtils.retryOnOAuthFailure(httpEndpoint, synapseInMessageContext,
-                        synapseOutMsgCtx)) {
+                if (originalMC != null && OAuthUtils.retryOnOAuthFailure(synapseInMessageContext, synapseOutMsgCtx)) {
                     httpEndpoint.retryCallWithNewToken(originalMC);
                     return;
                 }
@@ -645,6 +647,19 @@ public class SynapseCallbackReceiver extends CallbackReceiver {
             // send the response message through the synapse mediation flow
             try {
                 synapseOutMsgCtx.getEnvironment().injectMessage(synapseInMessageContext);
+                if (successfulEndpoint instanceof HTTPEndpoint) {
+                    HTTPEndpoint httpEndpoint = (HTTPEndpoint) successfulEndpoint;
+                    if (originalMC != null && OAuthUtils.retryOnOAuthFailure(synapseInMessageContext, synapseOutMsgCtx)) {
+                        Object transportHeaders = ((Axis2MessageContext) originalMC).getAxis2MessageContext().
+                                getProperty(org.apache.axis2.context.MessageContext.TRANSPORT_HEADERS);
+                        Map transportHeadersMap = (Map) transportHeaders;
+                        Map synapseInMessageContextTransportHeadersMap = (Map) synapseInMessageContext.
+                                getAxis2MessageContext().getProperty(MessageContext.TRANSPORT_HEADERS);
+                        transportHeadersMap.put(AuthConstants.AUTHORIZATION_HEADER,
+                                synapseInMessageContextTransportHeadersMap.get(AuthConstants.AUTHORIZATION_HEADER));
+                        httpEndpoint.retryCallWithNewToken(originalMC);
+                    }
+                }
             } catch (Exception syne) {
                 //introduced to handle runtime exceptions which are occurred inside Synapse handlers
                 //partially read stream could lead to corrupted attachment map and hence this exception

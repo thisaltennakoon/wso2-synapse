@@ -473,8 +473,7 @@ public class BlockingMsgSender {
 
                     OAuthConfiguredHTTPEndpoint httpEndpoint = (OAuthConfiguredHTTPEndpoint) successfulEndpoint;
 
-                    if (originalMC != null && OAuthUtils.retryOnOAuthFailure(httpEndpoint, synapseInMsgCtx,
-                            synapseInMsgCtx)) {
+                    if (originalMC != null && OAuthUtils.retryOnOAuthFailure(synapseInMsgCtx, synapseInMsgCtx)) {
                         MessageContext messageContext = httpEndpoint.retryCallWithNewToken(originalMC);
                         ((Axis2MessageContext) synapseInMsgCtx).setAxis2MessageContext(
                                 ((Axis2MessageContext) messageContext).getAxis2MessageContext());
