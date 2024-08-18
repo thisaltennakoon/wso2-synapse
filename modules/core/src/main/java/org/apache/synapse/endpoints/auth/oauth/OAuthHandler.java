@@ -34,8 +34,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 
 /**
  * This abstract class is to be used by OAuth handlers
@@ -52,12 +50,13 @@ public abstract class OAuthHandler implements AuthHandler {
     private Map<String, String> requestParametersMap;
     private Map<String, String> customHeadersMap;
     private final String authMode;
+    private final TokenCache tokenCache;
     protected final int connectionTimeout;
     protected final int connectionRequestTimeout;
     protected final int socketTimeout;
 
     protected OAuthHandler(String tokenApiUrl, String clientId, String clientSecret, String authMode,
-                           int connectionTimeout, int connectionRequestTimeout, int socketTimeout) {
+                           int connectionTimeout, int connectionRequestTimeout, int socketTimeout, TokenCache tokenCache) {
 
         this.id = OAuthUtils.getRandomOAuthHandlerID();
         this.tokenApiUrl = tokenApiUrl;
@@ -67,6 +66,7 @@ public abstract class OAuthHandler implements AuthHandler {
         this.connectionTimeout = connectionTimeout;
         this.connectionRequestTimeout = connectionRequestTimeout;
         this.socketTimeout = socketTimeout;
+        this.tokenCache = tokenCache;
     }
 
     @Override
@@ -86,20 +86,27 @@ public abstract class OAuthHandler implements AuthHandler {
      * @throws AuthException In the event of errors when generating new token
      */
     private String getToken(final MessageContext messageContext) throws AuthException {
+        String cacheKey = getId(messageContext); // Generate the cache key
 
-        try {
-            return TokenCache.getInstance().getToken(getId(messageContext), new Callable<String>() {
-                @Override
-                public String call() throws AuthException, IOException {
-                    return OAuthClient.generateToken(OAuthUtils.resolveExpression(tokenApiUrl, messageContext),
-                            buildTokenRequestPayload(messageContext), getEncodedCredentials(messageContext),
-                            messageContext, getResolvedCustomHeadersMap(customHeadersMap, messageContext), connectionTimeout,
-                            connectionRequestTimeout, socketTimeout);
-                }
-            });
-        } catch (ExecutionException e) {
-            throw new AuthException(e.getCause());
+        // Check if the token is already cached
+        String token = tokenCache.getToken(cacheKey);
+
+        if (token == null) {
+            // If no token found, generate a new one
+            try {
+                token = OAuthClient.generateToken(OAuthUtils.resolveExpression(tokenApiUrl, messageContext),
+                        buildTokenRequestPayload(messageContext), getEncodedCredentials(messageContext), messageContext,
+                        getResolvedCustomHeadersMap(customHeadersMap, messageContext), connectionTimeout,
+                        connectionRequestTimeout, socketTimeout);
+
+
+                // Cache the newly generated token
+                tokenCache.putToken(cacheKey, token);
+            } catch (IOException | AuthException e) {
+                throw new AuthException("Error generating token", e);
+            }
         }
+        return token;
     }
 
     /**
@@ -133,7 +140,7 @@ public abstract class OAuthHandler implements AuthHandler {
      */
     public void removeTokenFromCache(MessageContext messageContext) throws AuthException {
 
-        TokenCache.getInstance().removeToken(getId(messageContext));
+        tokenCache.removeToken(getId(messageContext));
     }
 
     /**
@@ -141,7 +148,7 @@ public abstract class OAuthHandler implements AuthHandler {
      */
     public void removeTokensFromCache() {
 
-        TokenCache.getInstance().removeTokens(id.concat("_"));
+        tokenCache.removeTokens(id.concat("_"));
     }
 
     /**

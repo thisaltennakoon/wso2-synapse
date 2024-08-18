@@ -37,10 +37,10 @@ public class AuthorizationCodeHandler extends OAuthHandler {
 
     public AuthorizationCodeHandler(String tokenApiUrl, String clientId, String clientSecret,
                                     String refreshToken, String authMode, int connectionTimeout,
-                                    int connectionRequestTimeout, int socketTimeout) {
+                                    int connectionRequestTimeout, int socketTimeout, TokenCache tokenCache) {
 
         super(tokenApiUrl, clientId, clientSecret, authMode, connectionTimeout, connectionRequestTimeout,
-                socketTimeout);
+                socketTimeout, tokenCache);
         this.refreshToken = refreshToken;
     }
 

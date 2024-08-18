@@ -41,6 +41,7 @@ public class AuthConstants {
     public static final String CUSTOM_HEADERS = "customHeaders";
     public static final String CUSTOM_HEADER = "header";
     public static final String NAME = "name";
+    public static final String TOKEN_CACHE_CLASS = "tokenCacheClass";
 
     public static final String OAUTH_CONNECTION_TIMEOUT = "connectionTimeout";
 
@@ -87,4 +88,6 @@ public class AuthConstants {
     public static final String BASIC_AUTH_USERNAME = "username";
     public static final String BASIC_AUTH_PASSWORD = "password";
 
+    // Redis cache related constants
+    public static final String REDIS_TOKEN_CACHE = "RedisTokenCache";
 }
